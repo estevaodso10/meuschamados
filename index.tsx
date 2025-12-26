@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { 
   LayoutDashboard, Users, Ticket, BarChart3, Settings, LogOut, 
   Mail, MessageSquare, Send, Paperclip, AlertCircle, CheckCheck, 
-  ArrowRight, CheckCircle, Shield, Search, Filter, Bell, Plus, Trash2, Tag, User as UserIcon, Edit, X, Layers, Briefcase, UserPlus, Ban, PauseCircle, PlayCircle, Archive, RotateCcw, Calendar, MoreVertical, Camera, Upload, Lock, Loader2
+  ArrowRight, CheckCircle, Shield, Search, Filter, Bell, Plus, Trash2, Tag, User as UserIcon, Edit, X, Layers, Briefcase, UserPlus, Ban, PauseCircle, PlayCircle, Archive, RotateCcw, Calendar, MoreVertical, Camera, Upload, Lock, Loader2, UserPlus as UserPlusIcon
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar 
@@ -240,7 +240,7 @@ interface AppState {
 
 const AppContext = createContext<AppState>({} as AppState);
 
-const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
@@ -671,7 +671,7 @@ const LoginView = () => {
       <Card className="w-full max-w-md p-8 shadow-xl border-t-4 border-t-blue-600">
         <div className="mb-6 text-center">
              <h2 className="text-xl font-semibold text-slate-800">Acesso Restrito</h2>
-             <p className="text-sm text-slate-400">Entre com suas credenciais do sistema</p>
+             <p className="text-sm text-slate-400">Entre com suas credenciais corporativas</p>
         </div>
 
         {error && (
@@ -735,696 +735,598 @@ const LoginView = () => {
       
       <div className="mt-8 text-slate-400 text-xs text-center">
           &copy; {new Date().getFullYear()} HelpDesk Pro. Todos os direitos reservados.<br/>
-          <span className="opacity-50">v1.0.0 • Integração Supabase Auth Ativa</span>
+          <span className="opacity-50">v1.2.0 • Integração Supabase Auth Ativa</span>
       </div>
     </div>
   );
 };
 
+// --- SETTINGS VIEW ---
 const SettingsView = () => {
-  const { categories, addCategory, removeCategory, groups, addGroup, deleteGroup, currentUser, updateUser } = useContext(AppContext);
-  const [activeTab, setActiveTab] = useState<'categories' | 'groups' | 'profile'>(currentUser?.role === 'AGENT' ? 'profile' : 'categories');
-  const [profileName, setProfileName] = useState(currentUser?.name || '');
-  const [profileEmail, setProfileEmail] = useState(currentUser?.email || '');
-  const [profileAvatar, setProfileAvatar] = useState(currentUser?.avatarUrl || DEFAULT_AVATAR);
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryDesc, setNewCategoryDesc] = useState('');
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDesc, setNewGroupDesc] = useState('');
-  const isAdmin = currentUser?.role === 'ADMIN';
+    const { categories, addCategory, removeCategory, groups, addGroup, deleteGroup } = useContext(AppContext);
+    const [newCat, setNewCat] = useState('');
+    const [newGroup, setNewGroup] = useState('');
 
-  const handleAddCategory = () => {
-    if (newCategoryName.trim()) {
-      addCategory({ name: newCategoryName.trim(), description: newCategoryDesc.trim() });
-      setNewCategoryName('');
-      setNewCategoryDesc('');
-    }
-  };
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800">Configurações</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <Tag size={20} /> Categorias
+                        </h3>
+                    </div>
+                    <div className="flex gap-2 mb-4">
+                        <input 
+                            type="text" 
+                            className="flex-1 border rounded-md px-3 py-2 text-sm" 
+                            placeholder="Nova Categoria..."
+                            value={newCat}
+                            onChange={e => setNewCat(e.target.value)}
+                        />
+                        <Button onClick={() => { addCategory({ name: newCat }); setNewCat(''); }} disabled={!newCat} size="sm">
+                            <Plus size={16} />
+                        </Button>
+                    </div>
+                    <div className="space-y-2">
+                        {categories.map(c => (
+                            <div key={c.id} className="flex justify-between items-center p-2 bg-slate-50 rounded text-sm">
+                                <span>{c.name}</span>
+                                <button onClick={() => removeCategory(c.id)} className="text-red-500 hover:text-red-700">
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
 
-  const handleAddGroup = () => {
-      if (newGroupName.trim()) {
-          addGroup({ name: newGroupName.trim(), description: newGroupDesc.trim() });
-          setNewGroupName('');
-          setNewGroupDesc('');
-      }
-  };
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveProfile = () => {
-      if (!currentUser) return;
-      const updates: Partial<User> = { avatarUrl: profileAvatar === DEFAULT_AVATAR ? undefined : profileAvatar };
-      if (isAdmin) {
-          updates.name = profileName;
-          updates.email = profileEmail;
-      }
-      updateUser(currentUser.id, updates);
-      setIsSuccessModalOpen(true);
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {isSuccessModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-lg shadow-xl p-8 max-w-sm w-full text-center animate-in fade-in zoom-in duration-200">
-                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCheck size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Upload Concluído!</h3>
-                <p className="text-slate-600 mb-6">Sua foto de perfil e informações foram atualizadas com sucesso.</p>
-                <Button onClick={() => setIsSuccessModalOpen(false)} className="w-full">
-                    Continuar
-                </Button>
+                <Card className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <Layers size={20} /> Grupos de Atendimento
+                        </h3>
+                    </div>
+                    <div className="flex gap-2 mb-4">
+                        <input 
+                            type="text" 
+                            className="flex-1 border rounded-md px-3 py-2 text-sm" 
+                            placeholder="Novo Grupo..."
+                            value={newGroup}
+                            onChange={e => setNewGroup(e.target.value)}
+                        />
+                        <Button onClick={() => { addGroup({ name: newGroup }); setNewGroup(''); }} disabled={!newGroup} size="sm">
+                            <Plus size={16} />
+                        </Button>
+                    </div>
+                    <div className="space-y-2">
+                        {groups.map(g => (
+                            <div key={g.id} className="flex justify-between items-center p-2 bg-slate-50 rounded text-sm">
+                                <span>{g.name}</span>
+                                <button onClick={() => deleteGroup(g.id)} className="text-red-500 hover:text-red-700">
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
             </div>
         </div>
-      )}
-
-      <div className="flex border-b border-slate-200 bg-white rounded-t-lg px-4 pt-2">
-        {isAdmin && (
-            <>
-                <button onClick={() => setActiveTab('categories')} className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'categories' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}><Tag size={16} className="mr-2" /> Categorias</button>
-                <button onClick={() => setActiveTab('groups')} className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'groups' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}><Briefcase size={16} className="mr-2" /> Grupos de Usuários</button>
-            </>
-        )}
-        <button onClick={() => setActiveTab('profile')} className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}><UserIcon size={16} className="mr-2" /> Meu Perfil</button>
-      </div>
-
-      {activeTab === 'categories' && isAdmin && (
-        <Card className="p-6 rounded-t-none mt-0 border-t-0">
-            <div className="flex items-center justify-between mb-6">
-            <div><h3 className="text-lg font-semibold text-slate-900">Categorias de Chamados</h3><p className="text-sm text-slate-500">Gerencie as categorias disponíveis para classificação dos tickets.</p></div>
-            </div>
-            <div className="flex gap-2 mb-6 items-start">
-            <div className="flex-1 space-y-2">
-                <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Nova categoria..." className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"/>
-                 <input type="text" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} placeholder="Descrição (opcional)" className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"/>
-            </div>
-            <Button onClick={handleAddCategory} disabled={!newCategoryName.trim()}><Plus size={16} className="mr-2" /> Adicionar</Button>
-            </div>
-            <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
-            <ul className="divide-y divide-slate-200">
-                {categories.map((category) => (
-                <li key={category.id} className="px-4 py-3 flex items-center justify-between hover:bg-white transition-colors">
-                    <div><span className="block text-sm font-medium text-slate-700">{category.name}</span>{category.description && <span className="block text-xs text-slate-500">{category.description}</span>}</div>
-                    <button onClick={() => removeCategory(category.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1" title="Remover categoria"><Trash2 size={16} /></button>
-                </li>
-                ))}
-                {categories.length === 0 && <li className="px-4 py-8 text-center text-sm text-slate-500 italic">Nenhuma categoria cadastrada.</li>}
-            </ul>
-            </div>
-        </Card>
-      )}
-
-      {activeTab === 'groups' && isAdmin && (
-        <Card className="p-6 rounded-t-none mt-0 border-t-0">
-             <div className="flex items-center justify-between mb-6">
-                <div><h3 className="text-lg font-semibold text-slate-900">Grupos de Usuários</h3><p className="text-sm text-slate-500">Crie grupos para segmentar o atendimento (ex: N1, Financeiro).</p></div>
-            </div>
-            <div className="flex gap-2 mb-6 items-start">
-                <div className="flex-1 space-y-2">
-                    <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="Nome do grupo (ex: Nível 1)" className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"/>
-                     <input type="text" value={newGroupDesc} onChange={(e) => setNewGroupDesc(e.target.value)} placeholder="Descrição (opcional)" className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"/>
-                </div>
-                <Button onClick={handleAddGroup} disabled={!newGroupName.trim()}><Plus size={16} className="mr-2" /> Adicionar</Button>
-            </div>
-            <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
-                <ul className="divide-y divide-slate-200">
-                    {[...groups].sort((a, b) => a.name.localeCompare(b.name)).map((group) => (
-                    <li key={group.id} className="px-4 py-3 flex items-center justify-between hover:bg-white transition-colors">
-                        <div><span className="block text-sm font-medium text-slate-700">{group.name}</span>{group.description && <span className="block text-xs text-slate-500">{group.description}</span>}</div>
-                        <button onClick={() => deleteGroup(group.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1" title="Remover grupo"><Trash2 size={16} /></button>
-                    </li>
-                    ))}
-                    {groups.length === 0 && <li className="px-4 py-8 text-center text-sm text-slate-500 italic">Nenhum grupo cadastrado.</li>}
-                </ul>
-            </div>
-        </Card>
-      )}
-
-      {activeTab === 'profile' && (
-          <Card className="p-6 rounded-t-none mt-0 border-t-0">
-              <div className="flex items-center justify-between mb-6"><div><h3 className="text-lg font-semibold text-slate-900">Meu Perfil</h3><p className="text-sm text-slate-500">Gerencie sua foto e informações pessoais.</p></div></div>
-              <div className="flex flex-col md:flex-row gap-8">
-                  <div className="flex flex-col items-center gap-4">
-                      <div className="relative group">
-                          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm"><img src={profileAvatar} alt="Profile" className="w-full h-full object-cover" /></div>
-                          <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full shadow-md hover:bg-blue-700 transition-colors" title="Alterar foto"><Camera size={18} /></button>
-                          <input type="file" ref={fileInputRef} className="hidden" accept="image/png, image/jpeg" onChange={handleAvatarChange}/>
-                      </div>
-                      <span className="text-xs text-slate-400">JPG ou PNG</span>
-                  </div>
-                  <div className="flex-1 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div><label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label><input type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} disabled={!isAdmin} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${!isAdmin ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200' : 'border-slate-300'}`}/></div>
-                          <div><label className="block text-sm font-medium text-slate-700 mb-1">Email</label><input type="email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} disabled={!isAdmin} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${!isAdmin ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200' : 'border-slate-300'}`}/></div>
-                          <div><label className="block text-sm font-medium text-slate-700 mb-1">Função</label><div className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-md text-slate-600 text-sm">{currentUser?.role === 'ADMIN' ? 'Administrador' : 'Atendente'}</div></div>
-                          <div><label className="block text-sm font-medium text-slate-700 mb-1">Status</label><div className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-md text-slate-600 text-sm">{USER_STATUS_MAP[currentUser?.status || 'ACTIVE']}</div></div>
-                      </div>
-                      <div className="flex justify-end pt-4"><Button onClick={handleSaveProfile}>Salvar Alterações</Button></div>
-                  </div>
-              </div>
-          </Card>
-      )}
-    </div>
-  );
+    );
 };
 
+// --- USERS VIEW ---
 const UsersView = () => {
-  const { users, addUser, updateUser, deleteUser, currentUser, groups } = useContext(AppContext);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('AGENT');
-  const [status, setStatus] = useState<UserStatus>('ACTIVE');
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [avatarUrl, setAvatarUrl] = useState<string>(DEFAULT_AVATAR);
+    const { users, groups, addUser, updateUser, deleteUser } = useContext(AppContext);
+    const [showModal, setShowModal] = useState(false);
+    
+    // Simple state for new user form
+    const [formData, setFormData] = useState<Partial<User>>({
+        name: '', email: '', role: 'AGENT', groups: []
+    });
 
-  const handleEdit = (user: User) => {
-    setEditingUser(user);
-    setName(user.name);
-    setEmail(user.email);
-    setRole(user.role);
-    setStatus(user.status);
-    setSelectedGroups(user.groups || []);
-    setAvatarUrl(user.avatarUrl || DEFAULT_AVATAR);
-    setIsFormOpen(true);
-  };
-
-  const handleCreate = () => {
-    setEditingUser(null);
-    setName('');
-    setEmail('');
-    setRole('AGENT');
-    setStatus('ACTIVE');
-    setSelectedGroups([]);
-    setAvatarUrl(DEFAULT_AVATAR);
-    setIsFormOpen(true);
-  };
-
-  const toggleGroupSelection = (groupId: string) => {
-      setSelectedGroups(prev => 
-        prev.includes(groupId) 
-            ? prev.filter(id => id !== groupId)
-            : [...prev, groupId]
-      );
-  };
-
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setAvatarUrl(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-      }
-  };
-
-  const handleSave = () => {
-    if (!name || !email) {
-      alert('Nome e Email são obrigatórios');
-      return;
-    }
-    const userData: Partial<User> = {
-      name, email, role, status,
-      groups: role === 'AGENT' ? selectedGroups : [], 
-      avatarUrl: avatarUrl === DEFAULT_AVATAR ? undefined : avatarUrl
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        addUser(formData);
+        setShowModal(false);
+        setFormData({ name: '', email: '', role: 'AGENT', groups: [] });
     };
-    if (editingUser) {
-      updateUser(editingUser.id, userData);
-    } else {
-      addUser(userData);
-    }
-    setIsFormOpen(false);
-  };
 
-  const handleDelete = (id: string) => {
-    if (id === currentUser?.id) {
-      alert('Você não pode excluir seu próprio usuário.');
-      return;
-    }
-    if (confirm('Tem certeza que deseja excluir este usuário?')) {
-      deleteUser(id);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {!isFormOpen ? (
-        <Card className="overflow-hidden">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
-            <h2 className="font-semibold text-slate-800">Usuários do Sistema</h2>
-            <Button onClick={handleCreate} size="sm"><Plus size={16} className="mr-2" /> Novo Usuário</Button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-                <tr><th className="px-4 py-3">Usuário</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Função</th><th className="px-4 py-3">Grupos</th><th className="px-4 py-3 text-right">Ações</th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                         <div className="relative">
-                             <img src={user.avatarUrl || DEFAULT_AVATAR} alt="" className={`w-8 h-8 rounded-full bg-slate-200 object-cover ${user.status !== 'ACTIVE' ? 'grayscale opacity-70' : ''}`} />
-                             <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${user.status === 'ACTIVE' ? 'bg-green-500' : user.status === 'SUSPENDED' ? 'bg-amber-500' : 'bg-slate-400'}`}></span>
-                         </div>
-                         <span className={`font-medium ${user.status === 'INACTIVE' ? 'text-slate-400' : 'text-slate-900'}`}>{user.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{user.email}</td>
-                    <td className="px-4 py-3"><Badge variant={user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'gray'}>{USER_STATUS_MAP[user.status]}</Badge></td>
-                    <td className="px-4 py-3"><Badge variant={user.role === 'ADMIN' ? 'blue' : 'default'}>{user.role === 'ADMIN' ? 'Administrador' : 'Atendente'}</Badge></td>
-                    <td className="px-4 py-3 text-slate-600"><div className="flex flex-wrap gap-1">{user.groups.length > 0 ? (user.groups.map(gid => { const grp = groups.find(g => g.id === gid); return grp ? <Badge key={gid} variant="purple">{grp.name}</Badge> : null; })) : (<span className="text-slate-400 italic text-xs">Nenhum</span>)}</div></td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => handleEdit(user)} className="p-1 text-slate-400 hover:text-blue-600 transition-colors" title="Editar"><Edit size={16} /></button>
-                        <button onClick={() => handleDelete(user.id)} className="p-1 text-slate-400 hover:text-red-600 transition-colors" title="Excluir" disabled={user.id === currentUser?.id}><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      ) : (
-        <Card className="max-w-2xl mx-auto">
-           <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
-            <h2 className="font-semibold text-slate-800">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h2>
-            <button onClick={() => setIsFormOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
-          </div>
-          <div className="p-6 space-y-6">
-             <div className="flex justify-center">
-                 <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                     <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-100 shadow-sm"><img src={avatarUrl} alt="Avatar Preview" className="w-full h-full object-cover" /></div>
-                     <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="text-white" size={24} /></div>
-                     <input type="file" ref={fileInputRef} className="hidden" accept="image/png, image/jpeg" onChange={handleAvatarUpload}/>
-                 </div>
-             </div>
-             <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label><input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Maria Silva"/></div>
-                <div className="col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Email</label><input type="email" className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="Ex: maria@empresa.com"/></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Função</label><select className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500" value={role} onChange={e => setRole(e.target.value as Role)}><option value="AGENT">Atendente</option><option value="ADMIN">Administrador</option></select></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Status</label><select className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500" value={status} onChange={e => setStatus(e.target.value as UserStatus)}><option value="ACTIVE">Ativo</option><option value="SUSPENDED">Suspenso (Temp.)</option><option value="INACTIVE">Desativado</option></select></div>
-                <div className="col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Grupos de Acesso</label>
-                    <div className={`border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto ${role === 'ADMIN' ? 'bg-slate-50 opacity-50 pointer-events-none' : ''}`}>
-                        {[...groups].sort((a, b) => a.name.localeCompare(b.name)).map(g => (
-                            <label key={g.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <input type="checkbox" checked={selectedGroups.includes(g.id)} onChange={() => toggleGroupSelection(g.id)} className="rounded text-blue-600 focus:ring-blue-500" disabled={role === 'ADMIN'}/>
-                                <span className="text-sm text-slate-700">{g.name}</span>
-                            </label>
-                        ))}
-                        {groups.length === 0 && <span className="text-xs text-slate-400">Nenhum grupo disponível.</span>}
-                    </div>
-                    {role === 'ADMIN' && <p className="text-xs text-slate-400 mt-1">Administradores têm acesso total.</p>}
-                </div>
-             </div>
-             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100"><Button variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button><Button onClick={handleSave}>Salvar Usuário</Button></div>
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-const AdminDashboard = () => {
-  const { tickets, users } = useContext(AppContext);
-  const [dateStart, setDateStart] = useState('');
-  const [dateEnd, setDateEnd] = useState('');
-  const [chartMetric, setChartMetric] = useState<'CREATED' | 'RESOLVED'>('CREATED');
-  const [chartPriority, setChartPriority] = useState<string>('ALL'); 
-  
-  const filteredTickets = tickets.filter(t => {
-      const ticketDate = new Date(t.createdAt);
-      if (dateStart) {
-          const [y, m, d] = dateStart.split('-').map(Number);
-          const start = new Date(y, m - 1, d, 0, 0, 0, 0); 
-          if (ticketDate < start) return false;
-      }
-      if (dateEnd) {
-          const [y, m, d] = dateEnd.split('-').map(Number);
-          const end = new Date(y, m - 1, d, 23, 59, 59, 999); 
-          if (ticketDate > end) return false;
-      }
-      return true;
-  });
-
-  const totalTickets = filteredTickets.length;
-  const openTickets = filteredTickets.filter(t => t.status === 'OPEN').length;
-  const inProgressTickets = filteredTickets.filter(t => t.status === 'IN_PROGRESS').length;
-  const waitingTickets = filteredTickets.filter(t => t.status === 'WAITING_CUSTOMER').length;
-  const highPriority = filteredTickets.filter(t => t.priority === 'HIGH').length;
-  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  
-  const getChartData = () => {
-      const counts = new Array(7).fill(0);
-      tickets.forEach(t => {
-          let relevantDate: Date | undefined;
-          let shouldCount = false;
-          if (chartMetric === 'CREATED') {
-              relevantDate = new Date(t.createdAt);
-              shouldCount = true; 
-          } else { 
-              if (t.status === 'RESOLVED') {
-                  relevantDate = new Date(t.updatedAt);
-                  shouldCount = true;
-              }
-          }
-          if (!shouldCount || !relevantDate) return;
-          if (chartPriority !== 'ALL' && t.priority !== chartPriority) return;
-          let inRange = true;
-          if (dateStart) {
-              const [y, m, d] = dateStart.split('-').map(Number);
-              const start = new Date(y, m - 1, d, 0, 0, 0, 0);
-              if (relevantDate < start) inRange = false;
-          }
-          if (dateEnd && inRange) {
-              const [y, m, d] = dateEnd.split('-').map(Number);
-              const end = new Date(y, m - 1, d, 23, 59, 59, 999);
-              if (relevantDate > end) inRange = false;
-          }
-          if (inRange) {
-              counts[relevantDate.getDay()]++;
-          }
-      });
-      return days.map((d, i) => ({ name: d, tickets: counts[i] }));
-  };
-  const chartData = getChartData();
-
-  const calculateAgentStats = (agentId: string) => {
-      const agentTickets = tickets.filter(t => {
-          if (t.agentId !== agentId || t.status !== 'RESOLVED') return false;
-          const ticketDate = new Date(t.updatedAt);
-          if (dateStart) {
-              const [y, m, d] = dateStart.split('-').map(Number);
-              const start = new Date(y, m - 1, d, 0, 0, 0, 0);
-              if (ticketDate < start) return false;
-          }
-          if (dateEnd) {
-              const [y, m, d] = dateEnd.split('-').map(Number);
-              const end = new Date(y, m - 1, d, 23, 59, 59, 999);
-              if (ticketDate > end) return false;
-          }
-          return true;
-      });
-      const resolvedCount = agentTickets.length;
-      if (resolvedCount === 0) return { count: 0, avgTime: 'N/A' };
-      const totalTimeMs = agentTickets.reduce((acc, t) => {
-          const startTime = t.assignedAt ? t.assignedAt.getTime() : t.createdAt.getTime();
-          const endTime = t.updatedAt.getTime();
-          const duration = Math.max(0, endTime - startTime);
-          return acc + duration;
-      }, 0);
-      const avgMs = totalTimeMs / resolvedCount;
-      const hours = Math.floor(avgMs / (1000 * 60 * 60));
-      const minutes = Math.floor((avgMs % (1000 * 60 * 60)) / (1000 * 60));
-      let timeString = '';
-      if (hours > 0) timeString += `${hours}h `;
-      timeString += `${minutes}m`;
-      return { count: resolvedCount, avgTime: timeString };
-  };
-  const activeAgents = users.filter(u => u.role === 'AGENT' && u.status === 'ACTIVE');
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-700"><Calendar size={20} className="text-blue-600" /><span className="font-semibold text-sm">Filtrar por Período:</span></div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="flex flex-col sm:flex-row gap-2 w-full">
-                <div className="flex items-center gap-2"><span className="text-xs text-slate-500 whitespace-nowrap">De:</span><input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="text-sm border border-slate-300 rounded-md px-2 py-1.5 focus:outline-none focus:border-blue-500 w-full sm:w-auto"/></div>
-                <div className="flex items-center gap-2"><span className="text-xs text-slate-500 whitespace-nowrap">Até:</span><input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} className="text-sm border border-slate-300 rounded-md px-2 py-1.5 focus:outline-none focus:border-blue-500 w-full sm:w-auto"/></div>
-                {(dateStart || dateEnd) && (<button onClick={() => { setDateStart(''); setDateEnd(''); }} className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors">Limpar</button>)}
-              </div>
-          </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        <Card className="p-6 border-t-4 border-t-blue-500 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{totalTickets}</h3></div><div className="p-3 bg-blue-50 rounded-full"><Ticket className="h-6 w-6 text-blue-600" /></div></div>
-        </Card>
-        <Card className="p-6 border-t-4 border-t-red-500 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Em Aberto</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{openTickets}</h3></div><div className="p-3 bg-red-50 rounded-full"><AlertCircle className="h-6 w-6 text-red-600" /></div></div>
-        </Card>
-        <Card className="p-6 border-t-4 border-t-indigo-500 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Em Atendimento</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{inProgressTickets}</h3></div><div className="p-3 bg-indigo-50 rounded-full"><PlayCircle className="h-6 w-6 text-indigo-600" /></div></div>
-        </Card>
-        <Card className="p-6 border-t-4 border-t-orange-500 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Aguardando Ajuda</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{waitingTickets}</h3></div><div className="p-3 bg-orange-50 rounded-full"><PauseCircle className="h-6 w-6 text-orange-600" /></div></div>
-        </Card>
-        <Card className="p-6 border-t-4 border-t-rose-500 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Alta Prioridade</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{highPriority}</h3></div><div className="p-3 bg-rose-50 rounded-full"><Shield className="h-6 w-6 text-rose-600" /></div></div>
-        </Card>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-            <h3 className="text-lg font-semibold text-slate-800">Volume Semanal</h3>
-            <div className="flex gap-2 w-full sm:w-auto">
-                <select value={chartMetric} onChange={(e) => setChartMetric(e.target.value as 'CREATED' | 'RESOLVED')} className="flex-1 sm:flex-none text-sm border-slate-300 rounded-md border px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-blue-500 font-medium"><option value="CREATED">Chamados Abertos (Novos)</option><option value="RESOLVED">Chamados Resolvidos</option></select>
-                <select value={chartPriority} onChange={(e) => setChartPriority(e.target.value)} className="flex-1 sm:flex-none text-sm border-slate-300 rounded-md border px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-blue-500 font-medium"><option value="ALL">Prioridade: Todas</option><option value="NORMAL">Normal</option><option value="HIGH">Alta</option></select>
-            </div>
-          </div>
-          <div className="h-64">
-             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                  <YAxis hide allowDecimals={false} />
-                  <RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                  <Bar dataKey="tickets" fill={chartMetric === 'CREATED' ? "#3b82f6" : "#10b981"} radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-             </ResponsiveContainer>
-          </div>
-        </Card>
-         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-slate-800">Performance da Equipe</h3>
-          <div className="space-y-4 h-64 overflow-y-auto pr-2">
-            {activeAgents.map((agent) => {
-               const stats = calculateAgentStats(agent.id);
-               return (
-               <div key={agent.id} className="flex items-center justify-between group p-2 rounded-lg hover:bg-slate-50 transition-colors">
-                 <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-white border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm"><img src={agent.avatarUrl || DEFAULT_AVATAR} alt="" className="w-full h-full object-cover" /></div>
-                    <div><p className="text-sm font-semibold text-slate-800">{agent.name}</p><div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div><p className="text-xs text-slate-500 font-medium">Tempo médio: {stats.avgTime}</p></div></div>
-                 </div>
-                 <div className="text-right"><span className="text-lg font-bold block text-slate-900">{stats.count}</span><span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Resolvidos</span></div>
-               </div>
-               );
-            })}
-             {activeAgents.length === 0 && <p className="text-sm text-slate-400 text-center py-4 italic">Nenhum atendente ativo no momento.</p>}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-const AdminTickets = () => {
-  const { tickets, users, groups, deleteTicket, assignTicketRoundRobin } = useContext(AppContext);
-  const [searchTerm, setSearchTerm] = useState("");
-  const filteredTickets = tickets.filter(t => t.subject.toLowerCase().includes(searchTerm.toLowerCase()) || t.requesterEmail.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  return (
-    <Card className="flex flex-col h-full">
-      <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white rounded-t-lg">
-        <h2 className="font-semibold text-slate-800">Gerenciamento de Chamados</h2>
-        <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /><input type="text" placeholder="Buscar..." className="pl-9 pr-4 py-2 border border-slate-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/></div>
-      </div>
-      <div className="overflow-auto flex-1">
-        <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
-                <tr><th className="px-4 py-3">ID</th><th className="px-4 py-3">Assunto</th><th className="px-4 py-3">Solicitante</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Atribuído</th><th className="px-4 py-3 text-right">Ações</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-                {filteredTickets.map(t => {
-                    const agent = users.find(u => u.id === t.agentId);
-                    const group = groups.find(g => g.id === t.groupId);
-                    return (
-                        <tr key={t.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-medium text-slate-600">#{t.numericId}</td>
-                            <td className="px-4 py-3 text-slate-900">{t.subject}</td>
-                            <td className="px-4 py-3 text-slate-500">{t.requesterEmail}</td>
-                            <td className="px-4 py-3"><Badge variant={t.status === 'OPEN' ? 'error' : t.status === 'RESOLVED' ? 'success' : 'blue'}>{STATUS_MAP[t.status]}</Badge></td>
-                            <td className="px-4 py-3">{agent ? (<div className="flex items-center gap-2"><img src={agent.avatarUrl || DEFAULT_AVATAR} className="w-6 h-6 rounded-full" /><span>{agent.name}</span></div>) : group ? (<Badge variant="purple">{group.name}</Badge>) : (<span className="text-slate-400 italic">--</span>)}</td>
-                            <td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => assignTicketRoundRobin(t.id)} title="Atribuição Automática" className="p-1.5 text-slate-500 hover:bg-slate-100 rounded"><RotateCcw size={16} /></button><button onClick={() => deleteTicket(t.id)} title="Excluir Chamado" className="p-1.5 text-red-500 hover:bg-red-50 rounded"><Trash2 size={16} /></button></div></td>
-                        </tr>
-                    );
-                })}
-            </tbody>
-        </table>
-      </div>
-    </Card>
-  );
-};
-
-const AgentWorkspace = () => {
-    const { tickets, currentUser, addMessage, updateTicketStatus } = useContext(AppContext);
-    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-    const [message, setMessage] = useState("");
-    const [isInternal, setIsInternal] = useState(false);
-    const myTickets = tickets.filter(t => (t.agentId === currentUser?.id || (t.groupId && currentUser?.groups.includes(t.groupId) && !t.agentId)) && t.status !== 'RESOLVED');
-    const selectedTicket = tickets.find(t => t.id === selectedTicketId);
-
-    const handleSendMessage = () => {
-        if(!selectedTicketId || !message.trim()) return;
-        addMessage(selectedTicketId, message, isInternal ? 'INTERNAL_NOTE' : 'EMAIL_OUTGOING', false);
-        setMessage("");
+    const toggleGroup = (groupId: string) => {
+        const currentGroups = formData.groups || [];
+        if (currentGroups.includes(groupId)) {
+            setFormData({ ...formData, groups: currentGroups.filter(g => g !== groupId) });
+        } else {
+            setFormData({ ...formData, groups: [...currentGroups, groupId] });
+        }
     };
 
     return (
-        <div className="flex h-[calc(100vh-140px)] gap-6">
-            <Card className="w-80 flex flex-col overflow-hidden">
-                <div className="p-4 bg-slate-50 border-b font-medium text-slate-700">Meus Chamados</div>
-                <div className="flex-1 overflow-auto">
-                    {myTickets.map(t => (
-                        <div key={t.id} onClick={() => setSelectedTicketId(t.id)} className={`p-4 border-b cursor-pointer hover:bg-slate-50 ${selectedTicketId === t.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}>
-                            <div className="flex justify-between mb-1"><span className="font-medium text-slate-900 text-sm">#{t.numericId}</span><span className="text-xs text-slate-400">{new Date(t.updatedAt).toLocaleDateString()}</span></div>
-                            <h4 className="text-sm font-semibold text-slate-800 mb-1 truncate">{t.subject}</h4>
-                            <p className="text-xs text-slate-500 truncate">{t.messages[t.messages.length - 1]?.content}</p>
-                        </div>
-                    ))}
-                    {myTickets.length === 0 && <div className="p-4 text-center text-slate-400 text-sm">Nenhum chamado pendente.</div>}
-                </div>
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800">Gerenciar Usuários</h2>
+                <Button onClick={() => setShowModal(true)}>
+                    <UserPlus size={18} className="mr-2" /> Novo Usuário
+                </Button>
+            </div>
+
+            <Card className="overflow-hidden">
+                <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nome</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Função</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Grupos</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                        {users.map(user => (
+                            <tr key={user.id}>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs">
+                                            {user.name.charAt(0)}
+                                        </div>
+                                        <div className="ml-4">
+                                            <div className="text-sm font-medium text-slate-900">{user.name}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.email}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <Badge variant={user.role === 'ADMIN' ? 'purple' : 'blue'}>{user.role}</Badge>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <select 
+                                        value={user.status}
+                                        onChange={(e) => updateUser(user.id, { status: e.target.value as UserStatus })}
+                                        className="text-xs border-none bg-transparent focus:ring-0 cursor-pointer"
+                                    >
+                                        <option value="ACTIVE">Ativo</option>
+                                        <option value="INACTIVE">Inativo</option>
+                                    </select>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-slate-500">
+                                    <div className="flex flex-wrap gap-1">
+                                        {user.groups.map(gid => {
+                                            const g = groups.find(gr => gr.id === gid);
+                                            return g ? <Badge key={gid} variant="gray">{g.name}</Badge> : null;
+                                        })}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button onClick={() => deleteUser(user.id)} className="text-red-600 hover:text-red-900"><Trash2 size={16} /></button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </Card>
-            <Card className="flex-1 flex flex-col overflow-hidden">
-                {selectedTicket ? (
-                    <>
-                        <div className="p-4 border-b flex justify-between items-center bg-white shadow-sm z-10">
-                            <div><h2 className="font-semibold text-lg text-slate-800">{selectedTicket.subject}</h2><p className="text-sm text-slate-500">{selectedTicket.requesterEmail}</p></div>
-                            <Button size="sm" variant="success" onClick={() => updateTicketStatus(selectedTicket.id, 'RESOLVED')}><CheckCircle size={16} className="mr-2" /> Resolver</Button>
+
+            {showModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <Card className="w-full max-w-lg p-6">
+                        <h3 className="text-lg font-bold mb-4">Adicionar Usuário</h3>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Nome</label>
+                                <input required className="w-full border rounded p-2" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Email</label>
+                                <input required type="email" className="w-full border rounded p-2" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Função</label>
+                                <select className="w-full border rounded p-2" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as Role})}>
+                                    <option value="AGENT">Agente</option>
+                                    <option value="ADMIN">Administrador</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Grupos</label>
+                                <div className="space-y-2 max-h-32 overflow-y-auto border p-2 rounded">
+                                    {groups.map(g => (
+                                        <label key={g.id} className="flex items-center gap-2">
+                                            <input type="checkbox" checked={formData.groups?.includes(g.id)} onChange={() => toggleGroup(g.id)} />
+                                            <span className="text-sm">{g.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+                                <Button type="submit">Salvar</Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- ADMIN DASHBOARD ---
+const AdminDashboard = () => {
+    const { tickets } = useContext(AppContext);
+
+    const stats = [
+        { label: 'Total de Tickets', value: tickets.length, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-100' },
+        { label: 'Em Aberto', value: tickets.filter(t => t.status === 'OPEN').length, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-100' },
+        { label: 'Resolvidos', value: tickets.filter(t => t.status === 'RESOLVED').length, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+        { label: 'Prioridade Alta', value: tickets.filter(t => t.priority === 'HIGH' && t.status !== 'RESOLVED').length, icon: Shield, color: 'text-red-600', bg: 'bg-red-100' },
+    ];
+
+    // Simple mock data for chart
+    const data = [
+        { name: 'Seg', tickets: 4 },
+        { name: 'Ter', tickets: 3 },
+        { name: 'Qua', tickets: 7 },
+        { name: 'Qui', tickets: 5 },
+        { name: 'Sex', tickets: 8 },
+        { name: 'Sab', tickets: 2 },
+        { name: 'Dom', tickets: 1 },
+    ];
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-slate-800">Visão Geral</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.map((stat, i) => (
+                    <Card key={i} className="p-4 flex items-center gap-4">
+                        <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}>
+                            <stat.icon size={24} />
                         </div>
-                        <div className="flex-1 overflow-auto p-6 space-y-6 bg-slate-50/50">
+                        <div>
+                            <p className="text-sm text-slate-500">{stat.label}</p>
+                            <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="p-6 h-80">
+                    <h3 className="text-lg font-semibold mb-4">Volume de Tickets (Semana)</h3>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                            <YAxis axisLine={false} tickLine={false} />
+                            <RechartsTooltip />
+                            <Bar dataKey="tickets" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </Card>
+                
+                <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Atividades Recentes</h3>
+                    <div className="space-y-4">
+                        {tickets.slice(0, 5).map(t => (
+                            <div key={t.id} className="flex items-start gap-3 pb-3 border-b border-slate-100 last:border-0">
+                                <div className={`mt-1 h-2 w-2 rounded-full ${t.status === 'OPEN' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                <div>
+                                    <p className="text-sm font-medium text-slate-800">{t.subject}</p>
+                                    <p className="text-xs text-slate-500">
+                                        {new Date(t.updatedAt).toLocaleTimeString()} • {STATUS_MAP[t.status]}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            </div>
+        </div>
+    );
+};
+
+// --- TICKET LIST VIEW (Admin/Agent) ---
+const AdminTickets = () => {
+    const { tickets, users, groups, assignTicketManual, deleteTicket } = useContext(AppContext);
+    
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-slate-800">Todos os Tickets</h2>
+            <Card className="overflow-hidden">
+                <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">ID</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Assunto</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Atribuído a</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                        {tickets.map(t => (
+                            <tr key={t.id} className="hover:bg-slate-50">
+                                <td className="px-6 py-4 text-sm text-slate-500">#{t.numericId}</td>
+                                <td className="px-6 py-4 text-sm font-medium text-slate-900">{t.subject}</td>
+                                <td className="px-6 py-4 text-sm">
+                                    <Badge variant={t.status === 'OPEN' ? 'warning' : t.status === 'RESOLVED' ? 'success' : 'blue'}>
+                                        {STATUS_MAP[t.status]}
+                                    </Badge>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-slate-500">
+                                    {t.agentId ? users.find(u => u.id === t.agentId)?.name : 'Não atribuído'}
+                                </td>
+                                <td className="px-6 py-4 text-right text-sm">
+                                    <button onClick={() => deleteTicket(t.id)} className="text-red-500 hover:text-red-700">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </Card>
+        </div>
+    );
+};
+
+// --- AGENT WORKSPACE ---
+const AgentWorkspace = () => {
+    const { currentUser, tickets, addMessage, updateTicketStatus, createTicket } = useContext(AppContext);
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+    const [reply, setReply] = useState('');
+    const [showNewTicketModal, setShowNewTicketModal] = useState(false);
+    
+    // New Ticket State
+    const [newTicketData, setNewTicketData] = useState({ subject: '', email: '', message: '' });
+
+    const myTickets = tickets.filter(t => t.agentId === currentUser?.id && t.status !== 'RESOLVED');
+    const selectedTicket = tickets.find(t => t.id === selectedTicketId);
+
+    const handleSend = () => {
+        if (!selectedTicketId || !reply) return;
+        addMessage(selectedTicketId, reply, 'EMAIL_OUTGOING', false);
+        setReply('');
+    };
+
+    const handleCreateTicket = (e: React.FormEvent) => {
+        e.preventDefault();
+        createTicket(
+            { subject: newTicketData.subject, requesterEmail: newTicketData.email },
+            newTicketData.message
+        );
+        setShowNewTicketModal(false);
+        setNewTicketData({ subject: '', email: '', message: '' });
+    };
+
+    return (
+        <div className="flex h-[calc(100vh-100px)] gap-6">
+            {/* Ticket List */}
+            <div className="w-1/3 flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-slate-800">Meus Tickets</h2>
+                    <Button size="sm" onClick={() => setShowNewTicketModal(true)}><Plus size={16} /></Button>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                    {myTickets.length === 0 && <p className="text-slate-500 text-sm text-center mt-10">Você não tem tickets pendentes.</p>}
+                    {myTickets.map(t => (
+                        <Card 
+                            key={t.id} 
+                            onClick={() => setSelectedTicketId(t.id)}
+                            className={`p-4 cursor-pointer transition-colors ${selectedTicketId === t.id ? 'border-blue-500 bg-blue-50' : 'hover:border-blue-300'}`}
+                        >
+                            <div className="flex justify-between items-start mb-1">
+                                <span className="font-semibold text-slate-900 text-sm truncate">{t.subject}</span>
+                                <span className="text-xs text-slate-400">#{t.numericId}</span>
+                            </div>
+                            <div className="flex justify-between items-end">
+                                <span className="text-xs text-slate-500 truncate">{t.requesterEmail}</span>
+                                <Badge variant="warning" className="scale-90 origin-right">{STATUS_MAP[t.status]}</Badge>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+
+            {/* Ticket Detail / Chat */}
+            <div className="flex-1">
+                {selectedTicket ? (
+                    <Card className="h-full flex flex-col overflow-hidden">
+                        <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+                            <div>
+                                <h3 className="font-bold text-lg">{selectedTicket.subject}</h3>
+                                <p className="text-sm text-slate-500">{selectedTicket.requesterEmail}</p>
+                            </div>
+                            <Button size="sm" variant="success" onClick={() => {
+                                updateTicketStatus(selectedTicket.id, 'RESOLVED');
+                                setSelectedTicketId(null);
+                            }}>
+                                <CheckCheck size={16} className="mr-2" /> Resolver
+                            </Button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
                             {selectedTicket.messages.map(msg => (
-                                <div key={msg.id} className={`flex ${msg.type === 'EMAIL_INCOMING' ? 'justify-start' : 'justify-end'}`}>
-                                    <div className={`max-w-[80%] p-4 rounded-lg shadow-sm ${msg.type === 'INTERNAL_NOTE' ? 'bg-yellow-50 border border-yellow-100' : msg.type === 'EMAIL_OUTGOING' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200'}`}>
-                                        <div className="text-xs mb-1 opacity-80 flex items-center gap-2">{msg.type === 'INTERNAL_NOTE' && <Lock size={12} />}<span>{msg.type === 'INTERNAL_NOTE' ? 'Nota Interna' : msg.type === 'EMAIL_OUTGOING' ? 'Você' : 'Cliente'}</span><span>• {new Date(msg.createdAt).toLocaleString()}</span></div>
+                                <div key={msg.id} className={`flex ${msg.type === 'EMAIL_OUTGOING' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[80%] rounded-lg p-3 ${
+                                        msg.type === 'EMAIL_OUTGOING' ? 'bg-blue-600 text-white rounded-br-none' : 
+                                        msg.type === 'INTERNAL_NOTE' ? 'bg-yellow-100 text-yellow-900 border border-yellow-200' :
+                                        'bg-white border border-slate-200 rounded-bl-none'
+                                    }`}>
                                         <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                        <div className={`text-[10px] mt-1 opacity-70 text-right`}>
+                                            {new Date(msg.createdAt).toLocaleTimeString()}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="p-4 bg-white border-t space-y-3">
-                            <div className="flex gap-4">
-                                <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={!isInternal} onChange={() => setIsInternal(false)} className="text-blue-600" /><span>Resposta Pública</span></label>
-                                <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={isInternal} onChange={() => setIsInternal(true)} className="text-yellow-600" /><span className="text-yellow-700 font-medium">Nota Interna</span></label>
-                            </div>
-                            <div className="flex gap-2">
-                                <textarea className={`flex-1 border rounded-md p-3 text-sm focus:ring-2 outline-none resize-none h-24 ${isInternal ? 'bg-yellow-50 border-yellow-200 focus:ring-yellow-500' : 'bg-white border-slate-300 focus:ring-blue-500'}`} placeholder={isInternal ? "Adicionar nota interna..." : "Escreva sua resposta..."} value={message} onChange={e => setMessage(e.target.value)}/>
-                                <Button className="h-24 px-6" onClick={handleSendMessage} disabled={!message.trim()} variant={isInternal ? 'warning' : 'primary'}><Send size={20} /></Button>
+
+                        <div className="p-4 border-t bg-white">
+                            <div className="relative">
+                                <textarea
+                                    className="w-full border rounded-lg p-3 pr-12 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                                    rows={3}
+                                    placeholder="Escreva uma resposta..."
+                                    value={reply}
+                                    onChange={e => setReply(e.target.value)}
+                                />
+                                <button 
+                                    onClick={handleSend}
+                                    className="absolute bottom-3 right-3 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+                                >
+                                    <Send size={16} />
+                                </button>
                             </div>
                         </div>
-                    </>
+                    </Card>
                 ) : (
-                    <div className="flex-1 flex items-center justify-center text-slate-400"><div className="text-center"><MessageSquare size={48} className="mx-auto mb-4 opacity-20" /><p>Selecione um chamado para iniciar o atendimento</p></div></div>
+                    <div className="h-full flex items-center justify-center text-slate-400 flex-col">
+                        <MessageSquare size={48} className="mb-4 opacity-20" />
+                        <p>Selecione um ticket para visualizar</p>
+                    </div>
                 )}
-            </Card>
-        </div>
-    );
-};
-
-const AgentResolvedTickets = () => {
-    const { tickets, currentUser, reopenTicket } = useContext(AppContext);
-    const resolvedTickets = tickets.filter(t => t.agentId === currentUser?.id && t.status === 'RESOLVED');
-    return (
-        <Card>
-            <div className="p-4 border-b font-medium text-slate-800">Meus Chamados Resolvidos</div>
-            <div className="overflow-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-slate-500 uppercase bg-slate-50"><tr><th className="px-4 py-3">ID</th><th className="px-4 py-3">Assunto</th><th className="px-4 py-3">Resolvido em</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {resolvedTickets.map(t => (
-                            <tr key={t.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-medium">#{t.numericId}</td><td className="px-4 py-3 text-slate-900">{t.subject}</td><td className="px-4 py-3 text-slate-500">{new Date(t.updatedAt).toLocaleDateString()}</td><td className="px-4 py-3 text-right"><Button variant="outline" size="sm" onClick={() => reopenTicket(t.id)}><RotateCcw size={14} className="mr-2" /> Reabrir</Button></td></tr>
-                        ))}
-                        {resolvedTickets.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-400">Nenhum chamado resolvido encontrado.</td></tr>}
-                    </tbody>
-                </table>
             </div>
-        </Card>
+
+            {/* New Ticket Modal */}
+            {showNewTicketModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <Card className="w-full max-w-lg p-6">
+                        <h3 className="text-lg font-bold mb-4">Novo Ticket</h3>
+                        <form onSubmit={handleCreateTicket} className="space-y-4">
+                            <input 
+                                placeholder="Assunto" 
+                                className="w-full border rounded p-2" 
+                                required 
+                                value={newTicketData.subject}
+                                onChange={e => setNewTicketData({...newTicketData, subject: e.target.value})}
+                            />
+                            <input 
+                                type="email" 
+                                placeholder="Email do Solicitante" 
+                                className="w-full border rounded p-2" 
+                                required 
+                                value={newTicketData.email}
+                                onChange={e => setNewTicketData({...newTicketData, email: e.target.value})}
+                            />
+                            <textarea 
+                                placeholder="Mensagem inicial" 
+                                className="w-full border rounded p-2" 
+                                rows={4} 
+                                required
+                                value={newTicketData.message}
+                                onChange={e => setNewTicketData({...newTicketData, message: e.target.value})}
+                            />
+                            <div className="flex justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={() => setShowNewTicketModal(false)}>Cancelar</Button>
+                                <Button type="submit">Criar Ticket</Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
+        </div>
     );
 };
 
+// --- APP LAYOUT ---
 const AppLayout = () => {
-  const { currentUser, logout, isLoadingSession } = useContext(AppContext);
-  const [activeTab, setActiveTab] = useState('dashboard');
+    const { currentUser, logout } = useContext(AppContext);
+    const [page, setPage] = useState<'dashboard' | 'tickets' | 'workspace' | 'users' | 'settings'>('dashboard');
 
-  if (isLoadingSession) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100">
-             <div className="flex flex-col items-center gap-4"><Loader2 className="animate-spin text-blue-600" size={48} /><p className="text-slate-500 font-medium animate-pulse">Carregando sistema...</p></div>
+    // Simple router inside layout
+    const renderContent = () => {
+        switch(page) {
+            case 'dashboard': return <AdminDashboard />;
+            case 'tickets': return <AdminTickets />;
+            case 'workspace': return <AgentWorkspace />;
+            case 'users': return <UsersView />;
+            case 'settings': return <SettingsView />;
+            default: return <AdminDashboard />;
+        }
+    };
+
+    return (
+        <div className="flex min-h-screen bg-slate-100">
+            {/* Sidebar */}
+            <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col">
+                <div className="p-6 flex items-center gap-3 text-white">
+                    <div className="bg-blue-600 p-2 rounded-lg"><Mail size={20} /></div>
+                    <span className="font-bold text-lg">HelpDesk Pro</span>
+                </div>
+                
+                <nav className="flex-1 px-4 space-y-2 mt-4">
+                    {currentUser?.role === 'ADMIN' && (
+                        <>
+                            <button onClick={() => setPage('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${page === 'dashboard' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+                                <LayoutDashboard size={20} /> Dashboard
+                            </button>
+                            <button onClick={() => setPage('tickets')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${page === 'tickets' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+                                <Layers size={20} /> Todos Tickets
+                            </button>
+                            <button onClick={() => setPage('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${page === 'users' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+                                <Users size={20} /> Usuários
+                            </button>
+                            <button onClick={() => setPage('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${page === 'settings' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+                                <Settings size={20} /> Configurações
+                            </button>
+                        </>
+                    )}
+                    
+                    <div className="pt-4 mt-4 border-t border-slate-700">
+                        <p className="px-4 text-xs font-semibold text-slate-500 uppercase mb-2">Área do Agente</p>
+                        <button onClick={() => setPage('workspace')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${page === 'workspace' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}>
+                            <Briefcase size={20} /> Meus Tickets
+                        </button>
+                    </div>
+                </nav>
+
+                <div className="p-4 border-t border-slate-800">
+                    <div className="flex items-center gap-3 mb-4 px-2">
+                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white">
+                            {currentUser?.name?.charAt(0) || 'U'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{currentUser?.name}</p>
+                            <p className="text-xs text-slate-500 truncate">{currentUser?.email}</p>
+                        </div>
+                    </div>
+                    <button onClick={logout} className="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
+                        <LogOut size={16} /> Sair
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 p-8 overflow-y-auto h-screen">
+                {renderContent()}
+            </main>
         </div>
-      );
-  }
-
-  if (!currentUser) return <LoginView />;
-
-  const isAgent = currentUser.role === 'AGENT';
-  const currentView = isAgent ? (activeTab === 'resolved' ? 'resolved' : activeTab === 'settings' ? 'settings' : 'workspace') : activeTab;
-
-  return (
-    <div className="min-h-screen bg-slate-100 flex">
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-slate-800"><div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center mr-3"><span className="font-bold text-white">H</span></div><span className="font-bold text-white text-lg">HelpDesk</span></div>
-        <nav className="flex-1 p-4 space-y-2">
-          {!isAgent && (
-            <>
-              <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${currentView === 'dashboard' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><LayoutDashboard size={20} className="mr-3" /> Dashboard</button>
-              <button onClick={() => setActiveTab('tickets')} className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${currentView === 'tickets' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><Ticket size={20} className="mr-3" /> Chamados</button>
-              <button onClick={() => setActiveTab('users')} className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${currentView === 'users' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><Users size={20} className="mr-3" /> Usuários</button>
-              <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${currentView === 'settings' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><Settings size={20} className="mr-3" /> Configurações</button>
-            </>
-          )}
-          {isAgent && (
-             <>
-               <button onClick={() => setActiveTab('workspace')} className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${currentView === 'workspace' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><MessageSquare size={20} className="mr-3" /> Workspace</button>
-               <button onClick={() => setActiveTab('resolved')} className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${currentView === 'resolved' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><Archive size={20} className="mr-3" /> Finalizados</button>
-               <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center px-4 py-3 rounded-md transition-colors ${currentView === 'settings' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><Settings size={20} className="mr-3" /> Configurações</button>
-             </>
-          )}
-        </nav>
-        <div className="p-4 border-t border-slate-800">
-            <div className="flex items-center gap-3 mb-4 px-2"><img src={currentUser.avatarUrl || DEFAULT_AVATAR} className="w-8 h-8 rounded-full bg-slate-200 object-cover" alt="Avatar"/><div className="overflow-hidden"><p className="text-sm font-medium text-white truncate">{currentUser.name}</p><p className="text-xs text-slate-500 truncate">{currentUser.role === 'ADMIN' ? 'Administrador' : 'Atendente'}</p></div></div>
-            <button onClick={logout} className="w-full flex items-center px-4 py-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors text-sm"><LogOut size={16} className="mr-3" /> Sair</button>
-        </div>
-      </aside>
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm">
-            <h1 className="text-xl font-semibold text-slate-800 capitalize">{currentView === 'dashboard' ? 'Visão Geral' : currentView === 'tickets' ? 'Gestão de Chamados' : currentView === 'workspace' ? 'Área de Atendimento' : currentView === 'resolved' ? 'Histórico de Finalizados' : currentView === 'settings' ? 'Configurações do Sistema' : 'Usuários'}</h1>
-        </header>
-        <div className="flex-1 overflow-auto p-8">
-            {currentView === 'dashboard' && <AdminDashboard />}
-            {currentView === 'tickets' && <AdminTickets />}
-            {currentView === 'workspace' && <AgentWorkspace />}
-            {currentView === 'resolved' && <AgentResolvedTickets />}
-            {currentView === 'settings' && <SettingsView />}
-            {currentView === 'users' && <UsersView />}
-        </div>
-      </main>
-    </div>
-  );
+    );
 };
 
 const App = () => {
-  return (
-    <AppProvider>
-      <AppLayout />
-    </AppProvider>
-  );
+    const { currentUser, isLoadingSession } = useContext(AppContext);
+
+    if (isLoadingSession) {
+        return (
+            <div className="h-screen w-screen flex items-center justify-center bg-slate-100">
+                <Loader2 className="animate-spin text-blue-600" size={48} />
+            </div>
+        );
+    }
+
+    return currentUser ? <AppLayout /> : <LoginView />;
 };
 
-const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = createRoot(rootElement);
+  root.render(
+    <AppProvider>
+      <App />
+    </AppProvider>
+  );
+}
